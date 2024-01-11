@@ -34,7 +34,11 @@ let books = StableBTreeMap<text, Book>(1);
 
 // define library canister
 export default Canister({
-    // method to issue card
+    /**
+     * method to issue card
+     * @param owner: Principal
+     * @returns LibraryCard
+     */
     issueCard: update([Principal], LibraryCard, (owner) => {
         const id = generateId();
         const card: LibraryCard = {
@@ -44,13 +48,16 @@ export default Canister({
             isActive: true
         };
 
-        // insert card into libraryCards
         libraryCards.insert(card.id, card);
 
         return card;
     }),
 
-    // method to revoke card
+    /**
+     * method to revoke card
+     * @param id: nat64
+     * @returns LibraryCard
+     */
     revokeCard: update([nat64], Result(LibraryCard, Error), (id) => {
         const cardOpt = libraryCards.get(id);
 
@@ -67,7 +74,12 @@ export default Canister({
         return Ok(card);
     }),
 
-    // method to borrow book
+    /**
+     * method to get card
+     * @param id: nat64
+     * @params book title: text
+     * @returns book: Book
+     */
     issueBook: update([nat64, text], Result(Book, Error), (cardId, bookTitle) => {
         const cardOpt = libraryCards.get(cardId);
 
@@ -98,7 +110,12 @@ export default Canister({
         return Ok(book);
     }),
 
-    // method to return book
+    /**
+     * method to return book
+     * @param id: nat64
+     * @params book title: text
+     * @returns book: Book
+     */
     returnBook: update([nat64, text], Result(Book, Error), (cardId, bookTitle) => {
         const cardOpt = libraryCards.get(cardId);
 
@@ -129,12 +146,19 @@ export default Canister({
         return Ok(book);
     }),
 
-    // method to list all books
+    /**
+     * method to list all books
+     * @returns books: Vec<Book>
+     */
     listBooks: query([], Vec(Book), () => {
         return books.values();
     }),
     
-    // method to list all borrowed books per card
+    /**
+     * method to list all borrowed books per card
+     * @param id: nat64
+     * @returns books: Vec<text>
+     */
     listBorrowedBooks: query([nat64], Vec(text), (cardId) => {
         const cardOpt = libraryCards.get(cardId);
 
@@ -147,7 +171,11 @@ export default Canister({
         return card.booksBorrowed;
     }),
 
-    // method to list all returned books per card
+    /**
+     * method to list all returned books per card
+     * @param id: nat64
+     * @returns books: Vec<text>
+     */
     listReturnedBooks: query([nat64], Vec(text), (cardId) => {
         const cardOpt = libraryCards.get(cardId);
 
@@ -160,12 +188,18 @@ export default Canister({
         return books.keys().filter((title) => !card.booksBorrowed.includes(title));
     }),
 
-    // method to list all active cards
+    /**
+     * method to list all active cards
+     * @returns cards: Vec<LibraryCard>
+     */
     listActiveCards: query([], Vec(LibraryCard), () => {
         return libraryCards.values().filter((card) => card.isActive);
     }),
     
-    // method to create book
+    /**
+     * method to list all inactive cards
+     * @returns cards: Vec<LibraryCard>
+     */
     createBook: update([text], Book, (title) => {
         const book: Book = {
             title,
