@@ -129,8 +129,13 @@ export default Canister({
         return Ok(book);
     }),
 
+    // method to list all books
+    listBooks: query([], Vec(Book), () => {
+        return books.values();
+    }),
+    
     // method to list all borrowed books per card
-    listBooks: query([nat64], Vec(text), (cardId) => {
+    listBorrowedBooks: query([nat64], Vec(text), (cardId) => {
         const cardOpt = libraryCards.get(cardId);
 
         if ('None' in cardOpt) {
@@ -159,7 +164,7 @@ export default Canister({
     listActiveCards: query([], Vec(LibraryCard), () => {
         return libraryCards.values().filter((card) => card.isActive);
     }),
-
+    
     // method to create book
     createBook: update([text], Book, (title) => {
         const book: Book = {
