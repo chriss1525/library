@@ -159,4 +159,16 @@ export default Canister({
     listActiveCards: query([], Vec(LibraryCard), () => {
         return libraryCards.values().filter((card) => card.isActive);
     }),
+
+    // method to create book
+    createBook: update([text], Book, (title) => {
+        const book: Book = {
+            title,
+            isBorrowed: false
+        };
+
+        books.insert(title, book);
+
+        return book;
+    }),
 });

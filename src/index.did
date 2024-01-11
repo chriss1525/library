@@ -1,0 +1,10 @@
+service: () -> {
+    createBook: (text) -> (record {title:text; isBorrowed:bool});
+    issueBook: (nat64, text) -> (variant {Ok:record {title:text; isBorrowed:bool}; Err:variant {BookDoesNotExist:text; CardDoesNotExist:nat64}});
+    issueCard: (principal) -> (record {id:nat64; owner:principal; isActive:bool; booksBorrowed:vec text});
+    listActiveCards: () -> (vec record {id:nat64; owner:principal; isActive:bool; booksBorrowed:vec text}) query;
+    listBooks: (nat64) -> (vec text) query;
+    listReturnedBooks: (nat64) -> (vec text) query;
+    returnBook: (nat64, text) -> (variant {Ok:record {title:text; isBorrowed:bool}; Err:variant {BookDoesNotExist:text; CardDoesNotExist:nat64}});
+    revokeCard: (nat64) -> (variant {Ok:record {id:nat64; owner:principal; isActive:bool; booksBorrowed:vec text}; Err:variant {BookDoesNotExist:text; CardDoesNotExist:nat64}});
+}
