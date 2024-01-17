@@ -1,31 +1,56 @@
-import { Canister, ic, update, query, Principal, text, Vec, Record, Opt, Result, Err, Ok, blob, nat64, Variant, StableBTreeMap, bool } from 'azle';;
+import {
+  Canister,
+  ic,
+  update,
+  query,
+  Principal,
+  text,
+  Vec,
+  Record,
+  Result,
+  Err,
+  Ok,
+  nat64,
+  Variant,
+  StableBTreeMap,
+  bool,
+} from "azle";
 
+const CARD_DOES_NOT_EXIST = "CardDoesNotExist";
+const BOOK_DOES_NOT_EXIST = "BookDoesNotExist";
 
 // define library struct
 const LibraryCard = Record({
-    id: nat64,
-    owner: Principal,
-    booksBorrowed: Vec(text),
-    isActive: bool
+  id: nat64,
+  owner: Principal,
+  booksBorrowed: Vec(text),
+  isActive: bool,
 });
 type LibraryCard = typeof LibraryCard.tsType;
 
 // define book struct
 const Book = Record({
-    title: text,
-    isBorrowed: bool
+  title: text,
+  isBorrowed: bool,
 });
 type Book = typeof Book.tsType;
 
 // define generateId function
 function generateId(): nat64 {
+  //add error handling
+  try {
     return ic.time();
+  } catch (error) {
+    console.log(error);
+  }
+  return ic.time();
 }
 
 // handle errors
+// it's good practice to define errors as constants or in another file
 const Error = Variant({
-    CardDoesNotExist: nat64,
-    BookDoesNotExist: text
+  [CARD_DOES_NOT_EXIST]: nat64,
+  [BOOK_DOES_NOT_EXIST]: text,
 });
 
 // define libraryCards and books
@@ -34,180 +59,186 @@ let books = StableBTreeMap<text, Book>(1);
 
 // define library canister
 export default Canister({
-    /**
-     * method to issue card
-     * @param owner: Principal
-     * @returns LibraryCard
-     */
-    issueCard: update([Principal], LibraryCard, (owner) => {
-        const id = generateId();
-        const card: LibraryCard = {
-            id,
-            owner,
-            booksBorrowed: [],
-            isActive: true
-        };
+  /**
+   * method to issue card
+   * @param owner: Principal
+   * @returns LibraryCard
+   */
+  issueCard: update([Principal], LibraryCard, (owner) => {
+    const id = generateId();
+    const card: LibraryCard = {
+      id,
+      owner,
+      booksBorrowed: [],
+      isActive: true,
+    };
 
-        libraryCards.insert(card.id, card);
+    libraryCards.insert(card.id, card);
 
-        return card;
-    }),
+    return card;
+  }),
 
-    /**
-     * method to revoke card
-     * @param id: nat64
-     * @returns LibraryCard
-     */
-    revokeCard: update([nat64], Result(LibraryCard, Error), (id) => {
-        const cardOpt = libraryCards.get(id);
+  /**
+   * method to revoke card
+   * @param id: nat64
+   * @returns LibraryCard
+   */
+  revokeCard: update([nat64], Result(LibraryCard, Error), (id) => {
+    const cardOpt = libraryCards.get(id);
 
-        if ('None' in cardOpt) {
-            return Err({
-                CardDoesNotExist: id
-            });
-        }
+    if ("None" in cardOpt) {
+      return Err({
+        CardDoesNotExist: id,
+      });
+    }
 
-        const card = cardOpt.Some;
-        card.isActive = false;
-        libraryCards.insert(card.id, card);
+    const card = cardOpt.Some;
+    card.isActive = false;
+    libraryCards.insert(card.id, card);
 
-        return Ok(card);
-    }),
+    return Ok(card);
+  }),
 
-    /**
-     * method to get card
-     * @param id: nat64
-     * @params book title: text
-     * @returns book: Book
-     */
-    issueBook: update([nat64, text], Result(Book, Error), (cardId, bookTitle) => {
-        const cardOpt = libraryCards.get(cardId);
+  /**
+   * method to get card
+   * @param id: nat64
+   * @params book title: text
+   * @returns book: Book
+   */
+  issueBook: update([nat64, text], Result(Book, Error), (cardId, bookTitle) => {
+    const cardOpt = libraryCards.get(cardId);
 
-        if ('None' in cardOpt) {
-            return Err({
-                CardDoesNotExist: cardId
-            });
-        }
+    if ("None" in cardOpt) {
+      return Err({
+        CardDoesNotExist: cardId,
+      });
+    }
 
-        const bookOpt = books.get(bookTitle);
+    const bookOpt = books.get(bookTitle);
 
-        if ('None' in bookOpt) {
-            return Err({
-                BookDoesNotExist: bookTitle
-            });
-        }
+    if ("None" in bookOpt) {
+      return Err({
+        BookDoesNotExist: bookTitle,
+      });
+    }
 
-        const card = cardOpt.Some;
-        const book = bookOpt.Some;
+    const card = cardOpt.Some;
+    const book = bookOpt.Some;
 
-        if (!book.isBorrowed && card.isActive) {
-            book.isBorrowed = true;
-            card.booksBorrowed.push(bookTitle);
-            books.insert(bookTitle, book);
-            libraryCards.insert(cardId, card);
-        }
+    if (!book.isBorrowed && card.isActive) {
+      book.isBorrowed = true;
+      card.booksBorrowed.push(bookTitle);
+      books.insert(bookTitle, book);
+      libraryCards.insert(cardId, card);
+    }
 
-        return Ok(book);
-    }),
+    return Ok(book);
+  }),
 
-    /**
-     * method to return book
-     * @param id: nat64
-     * @params book title: text
-     * @returns book: Book
-     */
-    returnBook: update([nat64, text], Result(Book, Error), (cardId, bookTitle) => {
-        const cardOpt = libraryCards.get(cardId);
+  /**
+   * method to return book
+   * @param id: nat64
+   * @params book title: text
+   * @returns book: Book
+   */
+  returnBook: update(
+    [nat64, text],
+    Result(Book, Error),
+    (cardId, bookTitle) => {
+      const cardOpt = libraryCards.get(cardId);
 
-        if ('None' in cardOpt) {
-            return Err({
-                CardDoesNotExist: cardId
-            });
-        }
+      if ("None" in cardOpt) {
+        return Err({
+          CardDoesNotExist: cardId,
+        });
+      }
 
-        const bookOpt = books.get(bookTitle);
+      const bookOpt = books.get(bookTitle);
 
-        if ('None' in bookOpt) {
-            return Err({
-                BookDoesNotExist: bookTitle
-            });
-        }
+      if ("None" in bookOpt) {
+        return Err({
+          BookDoesNotExist: bookTitle,
+        });
+      }
 
-        const card = cardOpt.Some;
-        const book = bookOpt.Some;
+      const card = cardOpt.Some;
+      const book = bookOpt.Some;
 
-        if (book.isBorrowed && card.isActive) {
-            book.isBorrowed = false;
-            card.booksBorrowed = card.booksBorrowed.filter((title) => title !== bookTitle);
-            books.insert(bookTitle, book);
-            libraryCards.insert(cardId, card);
-        }
+      if (book.isBorrowed && card.isActive) {
+        book.isBorrowed = false;
+        card.booksBorrowed = card.booksBorrowed.filter(
+          (title) => title !== bookTitle
+        );
+        books.insert(bookTitle, book);
+        libraryCards.insert(cardId, card);
+      }
 
-        return Ok(book);
-    }),
+      return Ok(book);
+    }
+  ),
 
-    /**
-     * method to list all books
-     * @returns books: Vec<Book>
-     */
-    listBooks: query([], Vec(Book), () => {
-        return books.values();
-    }),
-    
-    /**
-     * method to list all borrowed books per card
-     * @param id: nat64
-     * @returns books: Vec<text>
-     */
-    listBorrowedBooks: query([nat64], Vec(text), (cardId) => {
-        const cardOpt = libraryCards.get(cardId);
+  /**
+   * method to list all books
+   * @returns books: Vec<Book>
+   */
+  listBooks: query([], Vec(Book), () => {
+    return books.values();
+  }),
 
-        if ('None' in cardOpt) {
-            return [];
-        }
+  /**
+   * method to list all borrowed books per card
+   * @param id: nat64
+   * @returns books: Vec<text>
+   */
+  listBorrowedBooks: query([nat64], Vec(text), (cardId) => {
+    const cardOpt = libraryCards.get(cardId);
 
-        const card = cardOpt.Some;
+    if ("None" in cardOpt) {
+      return [];
+    }
 
-        return card.booksBorrowed;
-    }),
+    const card = cardOpt.Some;
 
-    /**
-     * method to list all returned books per card
-     * @param id: nat64
-     * @returns books: Vec<text>
-     */
-    listReturnedBooks: query([nat64], Vec(text), (cardId) => {
-        const cardOpt = libraryCards.get(cardId);
+    return card.booksBorrowed;
+  }),
 
-        if ('None' in cardOpt) {
-            return [];
-        }
+  /**
+   * method to list all returned books per card
+   * @param id: nat64
+   * @returns books: Vec<text>
+   */
+  listReturnedBooks: query([nat64], Vec(text), (cardId) => {
+    const cardOpt = libraryCards.get(cardId);
 
-        const card = cardOpt.Some;
+    if ("None" in cardOpt) {
+      return [];
+    }
 
-        return books.keys().filter((title) => !card.booksBorrowed.includes(title));
-    }),
+    const card = cardOpt.Some;
 
-    /**
-     * method to list all active cards
-     * @returns cards: Vec<LibraryCard>
-     */
-    listActiveCards: query([], Vec(LibraryCard), () => {
-        return libraryCards.values().filter((card) => card.isActive);
-    }),
-    
-    /**
-     * method to list all inactive cards
-     * @returns cards: Vec<LibraryCard>
-     */
-    createBook: update([text], Book, (title) => {
-        const book: Book = {
-            title,
-            isBorrowed: false
-        };
+    return books.keys().filter((title) => !card.booksBorrowed.includes(title));
+  }),
 
-        books.insert(title, book);
+  /**
+   * method to list all active cards
+   * @returns cards: Vec<LibraryCard>
+   */
+  listActiveCards: query([], Vec(LibraryCard), () => {
+    return libraryCards.values().filter((card) => card.isActive);
+  }),
 
-        return book;
-    }),
+  /**
+   * method to list all inactive cards
+   * @returns cards: Vec<LibraryCard>
+   */
+  createBook: update([text], Book, (title) => {
+    const book: Book = {
+      title,
+      isBorrowed: false,
+    };
+
+    books.insert(title, book);
+
+    return book;
+  }),
 });
